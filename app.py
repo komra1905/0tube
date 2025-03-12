@@ -3,6 +3,7 @@ from pytubefix import YouTube
 import os
 import subprocess
 import re
+import threading
 
 app = Flask(__name__)
 app.config['DOWNLOAD_FOLDER'] = 'downloads'
@@ -13,6 +14,17 @@ if not os.path.exists(app.config['DOWNLOAD_FOLDER']):
 def sanitize_filename(filename):
     # Windows does not allow: \ / : * ? " < > |
     return re.sub(r'[\\\/:*?"<>|]', '_', filename)
+
+def delayed_remove_file(file_path, delay=5):
+    """Remove file after a delay in seconds."""
+    def remove_file():
+        try:
+            os.remove(file_path)
+            app.logger.info(f"Removed file: {file_path}")
+        except Exception as e:
+            app.logger.error(f"Error removing file {file_path}: {e}")
+    timer = threading.Timer(delay, remove_file)
+    timer.start()
 
 @app.route('/')
 def index():
@@ -70,11 +82,14 @@ def download():
             prog_itag = option.split("progressive-")[1]
             yt = YouTube(url)
             stream = yt.streams.get_by_itag(prog_itag)
-            # Sanitize the filename
             orig_filename = stream.default_filename
             safe_filename = sanitize_filename(orig_filename)
-            # Download using the sanitized filename
             stream.download(output_path=app.config['DOWNLOAD_FOLDER'], filename=safe_filename)
+            file_path = os.path.join(app.config['DOWNLOAD_FOLDER'], safe_filename)
+
+            # Schedule deletion of file after 5 seconds
+            delayed_remove_file(file_path)
+
             return send_from_directory(
                 app.config['DOWNLOAD_FOLDER'],
                 safe_filename,
@@ -91,17 +106,14 @@ def download():
             video_stream = yt.streams.get_by_itag(video_itag)
             audio_stream = yt.streams.get_by_itag(audio_itag)
             
-            # Sanitize filenames for video and audio
             video_orig = video_stream.default_filename
             video_safe = sanitize_filename(video_orig)
             audio_orig = audio_stream.default_filename
             audio_safe = sanitize_filename(audio_orig)
             
-            # Download video and audio streams to temporary files
-            video_path = video_stream.download(output_path=app.config['DOWNLOAD_FOLDER'], filename= "video_" + video_safe)
-            audio_path = audio_stream.download(output_path=app.config['DOWNLOAD_FOLDER'], filename= "audio_" + audio_safe)
+            video_path = video_stream.download(output_path=app.config['DOWNLOAD_FOLDER'], filename="video_" + video_safe)
+            audio_path = audio_stream.download(output_path=app.config['DOWNLOAD_FOLDER'], filename="audio_" + audio_safe)
             
-            # Merge video and audio using ffmpeg
             output_filename = video_safe  # Use sanitized filename for output
             output_path = os.path.join(app.config['DOWNLOAD_FOLDER'], output_filename)
             cmd = [
@@ -115,10 +127,13 @@ def download():
             ]
             subprocess.run(cmd, check=True)
             
-            # Remove the temporary files
+            # Remove the temporary video and audio files immediately
             os.remove(video_path)
             os.remove(audio_path)
-            
+
+            # Schedule deletion of merged output file after 5 seconds
+            delayed_remove_file(output_path)
+
             return send_from_directory(
                 app.config['DOWNLOAD_FOLDER'],
                 output_filename,
@@ -128,12 +143,10 @@ def download():
         elif option == "mp3":
             yt = YouTube(url)
             stream = yt.streams.filter(only_audio=True).order_by('abr').desc().first()
-            # Download the audio stream (may be in webm format)
             orig_filename = stream.default_filename
             safe_orig = sanitize_filename(orig_filename)
             audio_path = stream.download(output_path=app.config['DOWNLOAD_FOLDER'], filename=safe_orig)
             
-            # Convert to mp3 using ffmpeg
             mp3_filename = os.path.splitext(safe_orig)[0] + ".mp3"
             mp3_path = os.path.join(app.config['DOWNLOAD_FOLDER'], mp3_filename)
             cmd = [
@@ -148,9 +161,11 @@ def download():
             ]
             subprocess.run(cmd, check=True)
             
-            # Remove the original file
             os.remove(audio_path)
-            
+
+            # Schedule deletion of converted mp3 file after 5 seconds
+            delayed_remove_file(mp3_path)
+
             return send_from_directory(
                 app.config['DOWNLOAD_FOLDER'],
                 mp3_filename,
