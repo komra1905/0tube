@@ -1,0 +1,65 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Download Options</title>
+</head>
+<body>
+    <h1>{{ video.title }}</h1>
+    <img src="{{ video.thumbnail }}" width="320" alt="Thumbnail">
+    <p>Channel: {{ video.author }}</p>
+    <p>Duration: {{ video.length // 60 }}:{{ '%02d' % (video.length % 60) }}</p>
+
+    <h2>Download Options</h2>
+    <form action="/download" method="post">
+        <input type="hidden" name="url" value="{{ url }}">
+        
+        <h3>Progressive Video (MP4) [Video + Audio]</h3>
+        {% if video.progressive_streams %}
+            {% for stream in video.progressive_streams %}
+                <label>
+                    <input type="radio" name="itag" value="progressive-{{ stream.itag }}">
+                    {{ stream.resolution }}
+                </label><br>
+            {% endfor %}
+        {% else %}
+            <p>No progressive streams available.</p>
+        {% endif %}
+        
+        <hr>
+        
+        <h3>Adaptive Video (MP4) [Higher Resolutions]</h3>
+        {% if video.adaptive_streams %}
+            <p>Select Video:</p>
+            {% for stream in video.adaptive_streams %}
+                <label>
+                    <input type="radio" name="itag" value="adaptive-{{ stream.itag }}">
+                    {{ stream.resolution }}
+                </label><br>
+            {% endfor %}
+            <p>Select Audio:</p>
+            {% if video.audio_streams %}
+                {% for astream in video.audio_streams %}
+                    <label>
+                        <input type="radio" name="audio_itag" value="{{ astream.itag }}" required>
+                        {{ astream.abr }}
+                    </label><br>
+                {% endfor %}
+            {% else %}
+                <p>No audio streams available.</p>
+            {% endif %}
+        {% else %}
+            <p>No adaptive streams available.</p>
+        {% endif %}
+        
+        <hr>
+        
+        <h3>Audio Only (MP3)</h3>
+        <label>
+            <input type="radio" name="itag" value="mp3" required>
+            MP3 Audio
+        </label><br>
+        
+        <button type="submit">Download</button>
+    </form>
+</body>
+</html>
