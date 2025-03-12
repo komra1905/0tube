@@ -111,6 +111,38 @@ def download():
                 output_filename,
                 as_attachment=True
             )
+        # Audio-only download (MP3)
+        elif option == "mp3":
+            yt = YouTube(url)
+            # Get the highest quality audio stream
+            stream = yt.streams.filter(only_audio=True).order_by('abr').desc().first()
+            # Download the audio stream (likely in webm format)
+            orig_filename = stream.default_filename
+            audio_path = stream.download(output_path=app.config['DOWNLOAD_FOLDER'])
+            
+            # Convert the downloaded audio to mp3 using ffmpeg
+            mp3_filename = os.path.splitext(orig_filename)[0] + ".mp3"
+            mp3_path = os.path.join(app.config['DOWNLOAD_FOLDER'], mp3_filename)
+            cmd = [
+                "ffmpeg",
+                "-y",            # Overwrite if exists
+                "-i", audio_path,
+                "-vn",           # No video
+                "-ab", "192k",   # Audio bitrate
+                "-ar", "44100",  # Audio sampling rate
+                "-f", "mp3",
+                mp3_path
+            ]
+            subprocess.run(cmd, check=True)
+            
+            # Remove the original file
+            os.remove(audio_path)
+            
+            return send_from_directory(
+                app.config['DOWNLOAD_FOLDER'],
+                mp3_filename,
+                as_attachment=True
+            )
         else:
             return "Error: Invalid download option."
     

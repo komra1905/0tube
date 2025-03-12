@@ -17,7 +17,7 @@
         {% if video.progressive_streams %}
             {% for stream in video.progressive_streams %}
                 <label>
-                    <input type="radio" name="itag" value="progressive-{{ stream.itag }}">
+                    <input type="radio" name="itag" value="progressive-{{ stream.itag }}" required>
                     {{ stream.resolution }}
                 </label><br>
             {% endfor %}
@@ -36,11 +36,11 @@
                     {{ stream.resolution }}
                 </label><br>
             {% endfor %}
-            <p>Select Audio:</p>
+            <p>Select Audio (only required when using adaptive video):</p>
             {% if video.audio_streams %}
                 {% for astream in video.audio_streams %}
                     <label>
-                        <input type="radio" name="audio_itag" value="{{ astream.itag }}" required>
+                        <input type="radio" name="audio_itag" value="{{ astream.itag }}">
                         {{ astream.abr }}
                     </label><br>
                 {% endfor %}
