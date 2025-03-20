@@ -9,7 +9,6 @@
     <p>Channel: {{ video.author }}</p>
     <p>Duration: {{ video.length // 60 }}:{{ '%02d' % (video.length % 60) }}</p>
 
-    <!-- New Thumbnail Download Form -->
     <form action="/download_thumbnail" method="post">
         <input type="hidden" name="thumbnail" value="{{ video.thumbnail }}">
         <input type="hidden" name="title" value="{{ video.title }}">

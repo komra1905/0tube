@@ -4,7 +4,7 @@ import os
 import subprocess
 import re
 import threading
-import requests  # <-- New import
+import requests
 
 app = Flask(__name__)
 app.config['DOWNLOAD_FOLDER'] = 'downloads'
@@ -178,7 +178,6 @@ def download():
     except Exception as e:
         return f"Error: {str(e)}"
 
-# New route for thumbnail download
 @app.route('/download_thumbnail', methods=['POST'])
 def download_thumbnail():
     thumbnail_url = request.form['thumbnail']
