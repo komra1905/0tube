@@ -4,6 +4,7 @@ import os
 import subprocess
 import re
 import threading
+import requests  # <-- New import
 
 app = Flask(__name__)
 app.config['DOWNLOAD_FOLDER'] = 'downloads'
@@ -174,6 +175,31 @@ def download():
         else:
             return "Error: Invalid download option."
     
+    except Exception as e:
+        return f"Error: {str(e)}"
+
+# New route for thumbnail download
+@app.route('/download_thumbnail', methods=['POST'])
+def download_thumbnail():
+    thumbnail_url = request.form['thumbnail']
+    title = request.form.get('title', 'thumbnail')
+    safe_filename = sanitize_filename(title) + "_thumbnail.jpg"
+    file_path = os.path.join(app.config['DOWNLOAD_FOLDER'], safe_filename)
+    try:
+        response = requests.get(thumbnail_url, stream=True)
+        if response.status_code == 200:
+            with open(file_path, 'wb') as f:
+                for chunk in response.iter_content(1024):
+                    f.write(chunk)
+            # Schedule deletion of the file after 5 seconds
+            delayed_remove_file(file_path)
+            return send_from_directory(
+                app.config['DOWNLOAD_FOLDER'],
+                safe_filename,
+                as_attachment=True
+            )
+        else:
+            return "Error: Unable to download thumbnail image."
     except Exception as e:
         return f"Error: {str(e)}"
 
